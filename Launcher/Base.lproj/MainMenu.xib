@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="32700.99.1234" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" customObjectInstantitationMethod="direct">
+<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="23727" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" customObjectInstantitationMethod="direct">
     <dependencies>
         <deployment identifier="macosx"/>
-        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="22689"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="23727"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
     <objects>
@@ -771,7 +771,7 @@
                                                             <action selector="autoFocusDelay:" target="Voe-Tx-rLC" id="G0m-ey-1Pj"/>
                                                         </connections>
                                                     </slider>
-                                                    <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" id="qkd-Eo-7zs">
+                                                    <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" id="qkd-Eo-7zs">
                                                         <rect key="frame" x="13" y="40" width="189" height="16"/>
                                                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                                         <textFieldCell key="cell" lineBreakMode="truncatingTail" title="Delay window focus for 50 ms" id="CQG-dM-ptz">
@@ -780,7 +780,7 @@
                                                             <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                                                         </textFieldCell>
                                                     </textField>
-                                                    <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" id="sv0-cx-SO9">
+                                                    <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" id="sv0-cx-SO9">
                                                         <rect key="frame" x="13" y="92" width="182" height="16"/>
                                                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                                         <textFieldCell key="cell" lineBreakMode="truncatingTail" title="Delay window raise for 50 ms" id="oGO-D2-O9I">
@@ -829,7 +829,7 @@
                                                             <action selector="hideIcon:" target="Voe-Tx-rLC" id="zyc-Bf-SwI"/>
                                                         </connections>
                                                     </button>
-                                                    <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" id="rZx-xX-rhV">
+                                                    <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" id="rZx-xX-rhV">
                                                         <rect key="frame" x="10" y="130" width="80" height="16"/>
                                                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                                         <textFieldCell key="cell" lineBreakMode="truncatingTail" title="Ignore apps:" id="n8h-8W-WTP">
@@ -838,7 +838,7 @@
                                                             <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                                                         </textFieldCell>
                                                     </textField>
-                                                    <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" id="WFM-eN-dmD">
+                                                    <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" id="WFM-eN-dmD">
                                                         <rect key="frame" x="10" y="70" width="154" height="16"/>
                                                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                                         <textFieldCell key="cell" lineBreakMode="truncatingTail" title="Stay focused bundle ids:" id="ulc-eZ-99x">
@@ -847,7 +847,7 @@
                                                             <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                                                         </textFieldCell>
                                                     </textField>
-                                                    <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" id="2ZZ-ME-HXj">
+                                                    <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" id="2ZZ-ME-HXj">
                                                         <rect key="frame" x="10" y="41" width="233" height="16"/>
                                                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                                         <textFieldCell key="cell" lineBreakMode="truncatingTail" title="Key to temporarily disable AutoRaise: " id="7ms-Jc-4x6">
@@ -856,7 +856,7 @@
                                                             <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                                                         </textFieldCell>
                                                     </textField>
-                                                    <comboBox verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="w3p-JS-4li">
+                                                    <comboBox focusRingType="none" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="w3p-JS-4li">
                                                         <rect key="frame" x="243" y="37" width="188" height="23"/>
                                                         <comboBoxCell key="cell" scrollable="YES" lineBreakMode="clipping" selectable="YES" editable="YES" sendsActionOnEndEditing="YES" borderStyle="bezel" drawsBackground="YES" completes="NO" numberOfVisibleItems="3" id="tEJ-XP-uUc">
                                                             <font key="font" metaFont="system"/>
@@ -872,7 +872,7 @@
                                                             <action selector="disableKey:" target="Voe-Tx-rLC" id="fjr-tb-C4H"/>
                                                         </connections>
                                                     </comboBox>
-                                                    <textField verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="JZU-fn-XWG">
+                                                    <textField focusRingType="none" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="JZU-fn-XWG">
                                                         <rect key="frame" x="168" y="67" width="260" height="21"/>
                                                         <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" selectable="YES" editable="YES" sendsActionOnEndEditing="YES" borderStyle="bezel" placeholderString="Id1,Id2,... (confirm with enter)" drawsBackground="YES" id="ji5-wV-kFn">
                                                             <font key="font" metaFont="system"/>
@@ -883,7 +883,7 @@
                                                             </connections>
                                                         </textFieldCell>
                                                     </textField>
-                                                    <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" id="Vpg-yD-SCS">
+                                                    <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" id="Vpg-yD-SCS">
                                                         <rect key="frame" x="10" y="13" width="338" height="16"/>
                                                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                                         <textFieldCell key="cell" lineBreakMode="truncatingTail" title="Keyboard shortcut to enable/disable (restart required): " id="n7U-zS-Q1I">
@@ -905,7 +905,7 @@
                                                             </connections>
                                                         </buttonCell>
                                                     </button>
-                                                    <textField verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="dCY-fJ-gdk">
+                                                    <textField focusRingType="none" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="dCY-fJ-gdk">
                                                         <rect key="frame" x="96" y="96" width="332" height="21"/>
                                                         <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" selectable="YES" editable="YES" sendsActionOnEndEditing="YES" borderStyle="bezel" placeholderString="Regex1,Regex2,... (confirm with enter)" drawsBackground="YES" id="sMb-Dx-mQe">
                                                             <font key="font" metaFont="system"/>
@@ -916,7 +916,7 @@
                                                             <action selector="ignoreTitles:" target="Voe-Tx-rLC" id="rO8-4q-UZN"/>
                                                         </connections>
                                                     </textField>
-                                                    <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" id="OOO-Mf-eAc">
+                                                    <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" id="OOO-Mf-eAc">
                                                         <rect key="frame" x="10" y="99" width="80" height="16"/>
                                                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                                         <textFieldCell key="cell" lineBreakMode="truncatingTail" title="Ignore titles:" id="fer-Vp-qdC">
@@ -925,7 +925,7 @@
                                                             <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                                                         </textFieldCell>
                                                     </textField>
-                                                    <textField verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="fR7-Pv-7jn">
+                                                    <textField focusRingType="none" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="fR7-Pv-7jn">
                                                         <rect key="frame" x="96" y="128" width="258" height="21"/>
                                                         <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" selectable="YES" editable="YES" sendsActionOnEndEditing="YES" borderStyle="bezel" placeholderString="App1,App2,... (confirm with enter)" drawsBackground="YES" id="D3Y-8l-wW9">
                                                             <font key="font" metaFont="system"/>
@@ -968,7 +968,7 @@
                                                 <rect key="frame" x="4" y="5" width="448" height="133"/>
                                                 <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                                 <subviews>
-                                                    <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="fmd-cx-lWE">
+                                                    <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="fmd-cx-lWE">
                                                         <rect key="frame" x="10" y="49" width="271" height="16"/>
                                                         <textFieldCell key="cell" lineBreakMode="clipping" title="Poll interval in milliseconds (minimum = 20):" id="EYb-SB-2fS">
                                                             <font key="font" metaFont="system"/>
@@ -976,7 +976,7 @@
                                                             <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                                                         </textFieldCell>
                                                     </textField>
-                                                    <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" id="kj7-9y-P3K">
+                                                    <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" id="kj7-9y-P3K">
                                                         <rect key="frame" x="10" y="79" width="206" height="16"/>
                                                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                                         <textFieldCell key="cell" lineBreakMode="truncatingTail" title="Mouse delta (0 = most sensitive):" id="DYn-Z4-mJ3">
@@ -985,7 +985,7 @@
                                                             <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                                                         </textFieldCell>
                                                     </textField>
-                                                    <textField verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="tJl-mG-QVd">
+                                                    <textField focusRingType="none" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="tJl-mG-QVd">
                                                         <rect key="frame" x="223" y="76" width="205" height="21"/>
                                                         <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" selectable="YES" editable="YES" sendsActionOnEndEditing="YES" state="on" borderStyle="bezel" placeholderString="0 (confirm with enter)" drawsBackground="YES" id="Gd8-Ua-y4s">
                                                             <numberFormatter key="formatter" formatterBehavior="default10_4" numberStyle="decimal" formatWidth="-1" minimumIntegerDigits="1" maximumIntegerDigits="2000000000" maximumFractionDigits="3" id="StJ-S0-voA"/>
@@ -997,7 +997,7 @@
                                                             <action selector="mouseDelta:" target="Voe-Tx-rLC" id="3hn-qI-0Q8"/>
                                                         </connections>
                                                     </textField>
-                                                    <textField verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="cfJ-Qr-aBm">
+                                                    <textField focusRingType="none" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="cfJ-Qr-aBm">
                                                         <rect key="frame" x="288" y="46" width="140" height="21"/>
                                                         <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" selectable="YES" editable="YES" sendsActionOnEndEditing="YES" state="on" borderStyle="bezel" placeholderString="50 (confirm with enter)" drawsBackground="YES" id="raA-7I-geR">
                                                             <numberFormatter key="formatter" formatterBehavior="default10_4" numberStyle="decimal" formatWidth="-1" minimumIntegerDigits="1" maximumIntegerDigits="2000000000" maximumFractionDigits="3" id="Ocy-yw-fj6"/>
@@ -1009,7 +1009,7 @@
                                                             <action selector="pollMillis:" target="Voe-Tx-rLC" id="ncS-9J-vM6"/>
                                                         </connections>
                                                     </textField>
-                                                    <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" id="YuX-8X-dEd">
+                                                    <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" id="YuX-8X-dEd">
                                                         <rect key="frame" x="10" y="21" width="395" height="16"/>
                                                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                                         <textFieldCell key="cell" lineBreakMode="truncatingTail" title="Note: A lower value increases responsiveness but also CPU load " id="BW9-Pm-wNh">
@@ -1069,15 +1069,15 @@
                                     <rect key="frame" x="10" y="33" width="500" height="632"/>
                                     <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                     <subviews>
-                                        <textField verticalHuggingPriority="750" horizontalCompressionResistancePriority="250" setsMaxLayoutWidthAtFirstLayout="YES" id="4Je-U3-qzh">
+                                        <textField focusRingType="none" verticalHuggingPriority="750" horizontalCompressionResistancePriority="250" setsMaxLayoutWidthAtFirstLayout="YES" id="4Je-U3-qzh">
                                             <rect key="frame" x="94" y="533" width="313" height="80"/>
                                             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                             <textFieldCell key="cell" controlSize="mini" sendsActionOnEndEditing="YES" alignment="center" id="Nuf-Kj-M4U">
                                                 <font key="font" metaFont="system"/>
                                                 <string key="title">AutoRaise &amp; Launcher
-Version 5.3.0, 2024-05-07
+Version 5.4.0, 2025-07-14
 
- ©2024 Stefan Post, Lothar Haeger
+ ©2025 Stefan Post, Lothar Haeger
 Icons made by https://www.flaticon.com/authors/fr</string>
                                                 <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
                                                 <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
