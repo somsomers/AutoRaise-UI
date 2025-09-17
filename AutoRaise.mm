@@ -28,7 +28,7 @@
 #include <Carbon/Carbon.h>
 #include <libproc.h>
 
-#define AUTORAISE_VERSION "5.5"
+#define AUTORAISE_VERSION "5.6"
 #define STACK_THRESHOLD 20
 
 #ifdef EXPERIMENTAL_FOCUS_FIRST
@@ -58,7 +58,8 @@ static CGPoint oldCorrectedPoint = {0, 0};
 
 #define SCALE_DELAY_MS 400 // The moment the mouse scaling should start, feel free to modify.
 #define SCALE_DURATION_MS (SCALE_DELAY_MS+600) // Mouse scale duration, feel free to modify.
-#define TASK_SWITCHER_MODIFIER_KEY kCGEventFlagMaskCommand // kCGEventFlagMaskControl, ...
+// #define TASK_SWITCHER_MODIFIER_KEY kCGEventFlagMaskCommand // kCGEventFlagMaskControl, ...
+#define TASK_SWITCHER_MODIFIER_KEY kCGEventFlagMaskControl
 
 #ifdef FOCUS_FIRST
 #define kCPSUserGenerated 0x200
@@ -1214,29 +1215,32 @@ void onTick() {
 }
 
 CGEventRef eventTapHandler(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void *userInfo) {
+    CGEventFlags flags = CGEventGetFlags(event);
+    bool commandPressed = (flags & TASK_SWITCHER_MODIFIER_KEY) == TASK_SWITCHER_MODIFIER_KEY;
+
     static bool commandTabPressed = false;
-    if (type == kCGEventFlagsChanged && commandTabPressed) {
+    if (!commandPressed && commandTabPressed) {
+        commandTabPressed = false;
         activated_by_task_switcher = true;
         ignoreTimes = 3;
     }
 
     static bool commandGravePressed = false;
-    if (type == kCGEventFlagsChanged && commandGravePressed) {
+    if (!commandPressed && commandGravePressed) {
+        commandGravePressed = false;
         activated_by_task_switcher = true;
         ignoreTimes = 3;
         [workspaceWatcher onAppActivated];
     }
 
-    commandTabPressed = false;
-    commandGravePressed = false;
     if (type == kCGEventKeyDown) {
         CGKeyCode keycode = (CGKeyCode) CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode);
         if (keycode == kVK_Tab) {
             CGEventFlags flags = CGEventGetFlags(event);
-            commandTabPressed = (flags & TASK_SWITCHER_MODIFIER_KEY) == TASK_SWITCHER_MODIFIER_KEY;
+            commandTabPressed = commandTabPressed || commandPressed;
         } else if (warpMouse && keycode == kVK_ANSI_Grave) {
             CGEventFlags flags = CGEventGetFlags(event);
-            commandGravePressed = (flags & TASK_SWITCHER_MODIFIER_KEY) == TASK_SWITCHER_MODIFIER_KEY;
+            commandGravePressed = commandGravePressed || commandPressed;
         }
     } else if (type == kCGEventTapDisabledByTimeout || type == kCGEventTapDisabledByUserInput) {
         if (verbose) { NSLog(@"Got event tap disabled event, re-enabling..."); }
@@ -1373,9 +1377,15 @@ int main(int argc, const char * argv[]) {
         if (verbose) { NSLog(@"System cursor scale: %f", oldScale); }
 
         CFRunLoopSourceRef runLoopSource = NULL;
-        eventTap = CGEventTapCreate(kCGSessionEventTap, kCGHeadInsertEventTap, kCGEventTapOptionDefault,
-            CGEventMaskBit(kCGEventKeyDown) | CGEventMaskBit(kCGEventFlagsChanged),
-            eventTapHandler, NULL);
+        eventTap = CGEventTapCreate(
+            kCGSessionEventTap,
+            kCGHeadInsertEventTap,
+            kCGEventTapOptionListenOnly,
+            CGEventMaskBit(kCGEventKeyDown) |
+            CGEventMaskBit(kCGEventFlagsChanged),
+            eventTapHandler,
+            NULL
+        );
         if (eventTap) {
             runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, eventTap, 0);
             if (runLoopSource) {
