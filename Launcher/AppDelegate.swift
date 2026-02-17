@@ -49,7 +49,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @IBOutlet weak var ignoreAppsEdit: NSTextField!
     @IBOutlet weak var ignoreTitlesEdit: NSTextField!
     @IBOutlet weak var stayFocusedBundleIdsEdit: NSTextFieldCell!
+    @IBOutlet weak var invertDisableKeyButton: NSButton!
     @IBOutlet weak var disableKeyBox: NSComboBox!
+    @IBOutlet weak var requireMouseStopButton: NSButton!
     @IBOutlet weak var ignoreSpaceChangedButton: NSButton!
     @IBOutlet weak var invertIgnoreAppsButton: NSButton!
     @IBOutlet weak var mouseDeltaEdit: NSTextField!
@@ -64,8 +66,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     let buildNumber: String = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as! String
 
     let appAbout =  "AutoRaise & Launcher\n" +
-        "Version 5.6.0, 2025-10-01\n\n" +
-        "©2025 Stefan Post, Lothar Haeger\n" +
+        "Version 5.6.1, 2026-02-20\n\n" +
+        "©2026 Stefan Post, Lothar Haeger\n" +
         "Icons made by https://www.flaticon.com/authors/fr"
 
     let homePageUrl = "https://github.com/lhaeger/AutoRaise"
@@ -89,7 +91,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var enableAltTaskSwitcher = NSControl.StateValue.off
     var enableOnLaunch = NSControl.StateValue.off
     var hideIcon = NSControl.StateValue.off
+    var requireMouseStop = NSControl.StateValue.on
     var ignoreSpaceChanged = NSControl.StateValue.off
+    var invertDisableKey = NSControl.StateValue.off
     var invertIgnoreApps = NSControl.StateValue.off
     var ignoreApps: String = ""
     var ignoreTitles: String = ""
@@ -263,10 +267,30 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    @IBAction func requireMouseStop(_ sender: Any) {
+        requireMouseStop = requireMouseStopButton.state
+        self.prefs.set(requireMouseStop == NSControl.StateValue.on ? "1" : "0",
+            forKey: "requireMouseStop")
+        if autoRaiseService.isRunning {
+            self.stopService(self)
+            self.startService(self)
+        }
+    }
+
     @IBAction func ignoreSpaceChanged(_ sender: Any) {
         ignoreSpaceChanged = ignoreSpaceChangedButton.state
         self.prefs.set(ignoreSpaceChanged == NSControl.StateValue.on ? "1" : "0",
             forKey: "ignoreSpaceChanged")
+        if autoRaiseService.isRunning {
+            self.stopService(self)
+            self.startService(self)
+        }
+    }
+
+    @IBAction func invertDisableKey(_ sender: Any) {
+        invertDisableKey = invertDisableKeyButton.state
+        self.prefs.set(invertDisableKey == NSControl.StateValue.on ? "1" : "0",
+            forKey: "invertDisableKey")
         if autoRaiseService.isRunning {
             self.stopService(self)
             self.startService(self)
@@ -324,8 +348,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if let rawValue = prefs.string(forKey: "enableOnLaunch") {
             enableOnLaunch = NSControl.StateValue(rawValue: Int(rawValue) ?? 0)
         }
+        if let rawValue = prefs.string(forKey: "requireMouseStop") {
+            requireMouseStop = NSControl.StateValue(rawValue: Int(rawValue) ?? 0)
+        }
         if let rawValue = prefs.string(forKey: "ignoreSpaceChanged") {
             ignoreSpaceChanged = NSControl.StateValue(rawValue: Int(rawValue) ?? 0)
+        }
+        if let rawValue = prefs.string(forKey: "invertDisableKey") {
+            invertDisableKey = NSControl.StateValue(rawValue: Int(rawValue) ?? 0)
         }
         if let rawValue = prefs.string(forKey: "invertIgnoreApps") {
             invertIgnoreApps = NSControl.StateValue(rawValue: Int(rawValue) ?? 0)
@@ -363,7 +393,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         ignoreTitlesEdit.stringValue = ignoreTitles
         stayFocusedBundleIdsEdit.stringValue = stayFocusedBundleIds
         disableKeyBox.stringValue = disableKey
+        requireMouseStopButton.state = requireMouseStop
         ignoreSpaceChangedButton.state = ignoreSpaceChanged
+        invertDisableKeyButton.state = invertDisableKey
         invertIgnoreAppsButton.state = invertIgnoreApps
         if enableWarp == NSControl.StateValue.on {
             enableCurserScalingButton.isEnabled = true
@@ -517,8 +549,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 if ( !disableKey.isEmpty ) {
                     autoRaiseService.arguments! += ["-disableKey", disableKey]
                 }
+                if ( requireMouseStop == NSControl.StateValue.off ) {
+                    autoRaiseService.arguments! += ["-requireMouseStop", "false"]
+                }
                 if ( ignoreSpaceChanged == NSControl.StateValue.on ) {
                     autoRaiseService.arguments! += ["-ignoreSpaceChanged", "true"]
+                }
+                if ( invertDisableKey == NSControl.StateValue.on ) {
+                    autoRaiseService.arguments! += ["-invertDisableKey", "true"]
                 }
                 if ( invertIgnoreApps == NSControl.StateValue.on ) {
                     autoRaiseService.arguments! += ["-invertIgnoreApps", "true"]

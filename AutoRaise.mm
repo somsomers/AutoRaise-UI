@@ -1,5 +1,5 @@
 /*
- * AutoRaise - Copyright (C) 2025 sbmpost
+ * AutoRaise - Copyright (C) 2026 sbmpost
  * Some pieces of the code are based on
  * metamove by jmgao as part of XFree86
  *
@@ -50,6 +50,9 @@
 // we correct the mouse position before determining which window is underneath the mouse.
 #define WINDOW_CORRECTION 3
 #define MENUBAR_CORRECTION 8
+#define SCREEN_EDGE_CORRECTION 1 // 1 <= value <= WINDOW_CORRECTION
+// If the mouse position is within WINDOW_CORRECTION pixels of a screen edge,
+// treat it as if it is SCREEN_EDGE_CORRECTION pixels removed from that edge.
 static CGPoint oldCorrectedPoint = {0, 0};
 
 // An activate delay of about 10 microseconds is just high enough to ensure we always
@@ -58,8 +61,7 @@ static CGPoint oldCorrectedPoint = {0, 0};
 
 #define SCALE_DELAY_MS 400 // The moment the mouse scaling should start, feel free to modify.
 #define SCALE_DURATION_MS (SCALE_DELAY_MS+600) // Mouse scale duration, feel free to modify.
-// #define TASK_SWITCHER_MODIFIER_KEY kCGEventFlagMaskCommand // kCGEventFlagMaskControl, ...
-#define TASK_SWITCHER_MODIFIER_KEY kCGEventFlagMaskControl
+#define TASK_SWITCHER_MODIFIER_KEY kCGEventFlagMaskCommand // kCGEventFlagMaskControl, ...
 
 #ifdef FOCUS_FIRST
 #define kCPSUserGenerated 0x200
@@ -114,8 +116,10 @@ static NSArray * pwas = @[
     @"Vivaldi",
     @"Brave",
     @"Opera",
-    @"edgemac"
+    @"edgemac",
+    @"helium"
 ];
+static NSArray * AppsRaisingOnFocus = @[@"IntelliJ IDEA", @"PyCharm", @"WebStorm", @"Arc", @"Dia"];
 static NSString * const DockBundleId = @"com.apple.dock";
 static NSString * const FinderBundleId = @"com.apple.finder";
 static NSString * const LittleSnitchBundleId = @"at.obdev.littlesnitch";
@@ -127,11 +131,14 @@ static NSString * const Untitled = @"Untitled"; // OSX Email search
 static NSString * const Zim = @"Zim";
 static NSString * const XQuartz = @"XQuartz";
 static NSString * const Finder = @"Finder";
+static NSString * const Pake = @"pake";
 static NSString * const NoTitle = @"";
 static CGPoint desktopOrigin = {0, 0};
 static CGPoint oldPoint = {0, 0};
 static bool propagateMouseMoved = false;
+static bool requireMouseStop = true;
 static bool ignoreSpaceChanged = false;
+static bool invertDisableKey = false;
 static bool invertIgnoreApps = false;
 static bool spaceHasChanged = false;
 static bool appWasActivated = false;
@@ -654,8 +661,11 @@ inline bool is_main_window(AXUIElementRef _app, AXUIElementRef _window, bool chr
 
 inline bool is_pwa(NSString * bundleIdentifier) {
     NSArray * components = [bundleIdentifier componentsSeparatedByString: @"."];
-    bool pwa = components.count > 4 && [pwas containsObject: components[2]] && [components[3] isEqual: @"app"];
+    bool pake = components.count == 3 && [components[1] isEqual: Pake];
+    bool pwa = pake || (components.count > 4 &&
+        [pwas containsObject: components[2]] && [components[3] isEqual: @"app"]);
     if (verbose && pwa) { NSLog(@"PWA: %@", components[2]); }
+    return pwa;
 }
 
 //-----------------------------------------------notifications----------------------------------------------
@@ -755,8 +765,10 @@ const NSString *kWarpY = @"warpY";
 const NSString *kScale = @"scale";
 const NSString *kVerbose = @"verbose";
 const NSString *kAltTaskSwitcher = @"altTaskSwitcher";
+const NSString *kRequireMouseStop = @"requireMouseStop";
 const NSString *kIgnoreSpaceChanged = @"ignoreSpaceChanged";
 const NSString *kStayFocusedBundleIds = @"stayFocusedBundleIds";
+const NSString *kInvertDisableKey = @"invertDisableKey";
 const NSString *kInvertIgnoreApps = @"invertIgnoreApps";
 const NSString *kIgnoreApps = @"ignoreApps";
 const NSString *kIgnoreTitles = @"ignoreTitles";
@@ -766,12 +778,12 @@ const NSString *kDisableKey = @"disableKey";
 #ifdef FOCUS_FIRST
 const NSString *kFocusDelay = @"focusDelay";
 NSArray *parametersDictionary = @[kDelay, kWarpX, kWarpY, kScale, kVerbose, kAltTaskSwitcher,
-    kFocusDelay, kIgnoreSpaceChanged, kInvertIgnoreApps, kIgnoreApps, kIgnoreTitles,
-    kStayFocusedBundleIds, kDisableKey, kMouseDelta, kPollMillis];
+    kFocusDelay, kRequireMouseStop, kIgnoreSpaceChanged, kInvertDisableKey, kInvertIgnoreApps,
+    kIgnoreApps, kIgnoreTitles, kStayFocusedBundleIds, kDisableKey, kMouseDelta, kPollMillis];
 #else
 NSArray *parametersDictionary = @[kDelay, kWarpX, kWarpY, kScale, kVerbose, kAltTaskSwitcher,
-    kIgnoreSpaceChanged, kInvertIgnoreApps, kIgnoreApps, kIgnoreTitles, kStayFocusedBundleIds,
-    kDisableKey, kMouseDelta, kPollMillis];
+    kRequireMouseStop, kIgnoreSpaceChanged, kInvertDisableKey, kInvertIgnoreApps, kIgnoreApps,
+    kIgnoreTitles, kStayFocusedBundleIds, kDisableKey, kMouseDelta, kPollMillis];
 #endif
 NSMutableDictionary *parameters = [[NSMutableDictionary alloc] init];
 
@@ -845,6 +857,7 @@ NSMutableDictionary *parameters = [[NSMutableDictionary alloc] init];
 #endif
         parameters[kDelay] = @"1";
     }
+    if (!parameters[kRequireMouseStop]) { parameters[kRequireMouseStop] = @"true"; }
     if ([parameters[kPollMillis] intValue] < 20) { parameters[kPollMillis] = @"50"; }
     if ([parameters[kMouseDelta] floatValue] < 0) { parameters[kMouseDelta] = @"0"; }
     if ([parameters[kScale] floatValue] < 1) { parameters[kScale] = @"2.0"; }
@@ -963,13 +976,18 @@ void onTick() {
 
     bool mouseMoved = fabs(mouse_x_diff) > mouseDelta;
     mouseMoved = mouseMoved || fabs(mouse_y_diff) > mouseDelta;
+#if !defined FOCUS_FIRST || !defined FOCUS_WITHOUT_MOUSE_STOP
+    bool mouseStopped = !mouseMoved;
+#endif
     mouseMoved = mouseMoved || propagateMouseMoved;
     propagateMouseMoved = false;
 
-    // delayCount = 0 -> warp only
 #ifdef FOCUS_FIRST
+    // !delayCount && !raiseDelayCount -> warp only (no focus, no raise)
     if (altTaskSwitcher && !delayCount && !raiseDelayCount) { return; }
+    bool focus_first = delayCount && raiseDelayCount != 1;
 #else
+    // !delayCount -> warp only (no raise)
     if (altTaskSwitcher && !delayCount) { return; }
 #endif
 
@@ -978,50 +996,43 @@ void onTick() {
     // delayTicks = n -> delay started
     if (delayTicks > 1) { delayTicks--; }
 
-#ifdef FOCUS_FIRST
-    if (!delayCount || raiseDelayCount == 1) {
-#endif
-        if (@available(macOS 12.00, *)) {
-            // the correction should be applied before we return
-            // under certain conditions in the code after it. This
-            // ensures oldCorrectedPoint always has a recent value.
-            if (mouseMoved) {
-                NSScreen * screen = findScreen(mousePoint);
-                mousePoint.x += mouse_x_diff > 0 ? WINDOW_CORRECTION : -WINDOW_CORRECTION;
-                mousePoint.y += mouse_y_diff > 0 ? WINDOW_CORRECTION : -WINDOW_CORRECTION;
-                if (screen) {
-                    NSScreen * main_screen = NSScreen.screens[0];
-                    float screenOriginX = NSMinX(screen.frame) - NSMinX(main_screen.frame);
-                    float screenOriginY = NSMaxY(main_screen.frame) - NSMaxY(screen.frame);
+    if (@available(macOS 12.00, *)) {
+        // the correction should be applied before we return
+        // under certain conditions in the code after it. This
+        // ensures oldCorrectedPoint always has a recent value.
+        if (mouseMoved) {
+            NSScreen * screen = findScreen(mousePoint);
+            mousePoint.x += mouse_x_diff > 0 ? WINDOW_CORRECTION : -WINDOW_CORRECTION;
+            mousePoint.y += mouse_y_diff > 0 ? WINDOW_CORRECTION : -WINDOW_CORRECTION;
+            if (screen) {
+                NSScreen * main_screen = NSScreen.screens[0];
+                float screenOriginX = NSMinX(screen.frame) - NSMinX(main_screen.frame);
+                float screenOriginY = NSMaxY(main_screen.frame) - NSMaxY(screen.frame);
 
-                    if (oldPoint.x > screenOriginX + NSWidth(screen.frame) - WINDOW_CORRECTION) {
-                        if (verbose) { NSLog(@"Screen edge correction"); }
-                        mousePoint.x = screenOriginX + NSWidth(screen.frame) - 1;
-                    } else if (oldPoint.x < screenOriginX + WINDOW_CORRECTION - 1) {
-                        if (verbose) { NSLog(@"Screen edge correction"); }
-                        mousePoint.x = screenOriginX + 1;
-                    }
+                if (oldPoint.x > screenOriginX + NSWidth(screen.frame) - WINDOW_CORRECTION) {
+                    if (verbose) { NSLog(@"Screen edge correction"); }
+                    mousePoint.x = screenOriginX + NSWidth(screen.frame) - SCREEN_EDGE_CORRECTION;
+                } else if (oldPoint.x < screenOriginX + WINDOW_CORRECTION - 1) {
+                    if (verbose) { NSLog(@"Screen edge correction"); }
+                    mousePoint.x = screenOriginX + SCREEN_EDGE_CORRECTION;
+                }
 
-                    if (oldPoint.y > screenOriginY + NSHeight(screen.frame) - WINDOW_CORRECTION) {
-                        if (verbose) { NSLog(@"Screen edge correction"); }
-                        mousePoint.y = screenOriginY + NSHeight(screen.frame) - 1;
-                    } else {
-                        float menuBarHeight =
-                            fmax(0, NSMaxY(screen.frame) - NSMaxY(screen.visibleFrame) - 1);
-                        if (mousePoint.y < screenOriginY + menuBarHeight + MENUBAR_CORRECTION) {
-                            if (verbose) { NSLog(@"Menu bar correction"); }
-                            mousePoint.y = screenOriginY;
-                        }
+                if (oldPoint.y > screenOriginY + NSHeight(screen.frame) - WINDOW_CORRECTION) {
+                    if (verbose) { NSLog(@"Screen edge correction"); }
+                    mousePoint.y = screenOriginY + NSHeight(screen.frame) - SCREEN_EDGE_CORRECTION;
+                } else {
+                    float menuBarHeight = fmax(0, NSMaxY(screen.frame) - NSMaxY(screen.visibleFrame) - 1);
+                    if (mousePoint.y < screenOriginY + menuBarHeight + MENUBAR_CORRECTION) {
+                        if (verbose) { NSLog(@"Menu bar correction"); }
+                        mousePoint.y = screenOriginY;
                     }
                 }
-                oldCorrectedPoint = mousePoint;
-            } else {
-                mousePoint = oldCorrectedPoint;
             }
+            oldCorrectedPoint = mousePoint;
+        } else {
+            mousePoint = oldCorrectedPoint;
         }
-#ifdef FOCUS_FIRST
     }
-#endif
 
     if (ignoreTimes) {
         ignoreTimes--;
@@ -1038,7 +1049,7 @@ void onTick() {
             delayTicks = 0;
         }
         spaceHasChanged = false;
-    } else if (delayTicks && mouseMoved) {
+    } else if (requireMouseStop && !mouseStopped && mouseMoved) {
         delayTicks = 0;
         // propagate the mouseMoved event
         // to restart the delay if needed
@@ -1053,14 +1064,14 @@ void onTick() {
         // don't raise for as long as something is being dragged (resizing a window for instance)
         bool abort = CGEventSourceButtonState(kCGEventSourceStateCombinedSessionState, kCGMouseButtonLeft) ||
             CGEventSourceButtonState(kCGEventSourceStateCombinedSessionState, kCGMouseButtonRight) ||
-            dock_active() ||
-            mc_active();
+            dock_active() || mc_active();
 
         if (!abort && disableKey) {
             CGEventRef _keyDownEvent = CGEventCreateKeyboardEvent(NULL, 0, true);
             CGEventFlags flags = CGEventGetFlags(_keyDownEvent);
             if (_keyDownEvent) { CFRelease(_keyDownEvent); }
             abort = (flags & disableKey) == disableKey;
+            abort = abort != invertDisableKey;
         }
 
         NSRunningApplication *frontmostApp = [[NSWorkspace sharedWorkspace] frontmostApplication];
@@ -1079,6 +1090,9 @@ void onTick() {
             if (AXUIElementGetPid(_mouseWindow, &mouseWindow_pid) == kAXErrorSuccess) {
                 bool needs_raise = !invertIgnoreApps;
                 AXUIElementRef _mouseWindowApp = AXUIElementCreateApplication(mouseWindow_pid);
+#ifdef FOCUS_FIRST
+                bool workaround_for_apps_raising_on_focus = false;
+#endif
                 if (needs_raise && titleEquals(_mouseWindow, @[NoTitle, Untitled])) {
                     needs_raise = is_main_window(_mouseWindowApp, _mouseWindow, is_pwa(
                         [NSRunningApplication runningApplicationWithProcessIdentifier:
@@ -1100,6 +1114,9 @@ void onTick() {
                             }
                         }
                     }
+#ifdef FOCUS_FIRST
+                    workaround_for_apps_raising_on_focus = titleEquals(_mouseWindowApp, AppsRaisingOnFocus);
+#endif
                 }
                 CFRelease(_mouseWindowApp);
                 CGWindowID mouseWindow_id;
@@ -1123,18 +1140,18 @@ void onTick() {
                         _AXUIElementGetWindow(_focusedWindow, &focusedWindow_id);
                         needs_raise = mouseWindow_id != focusedWindow_id;
 #ifdef FOCUS_FIRST
-                        if (raiseDelayCount) {
+                        if (!focus_first) {
 #endif
                             needs_raise = needs_raise && !contained_within(_focusedWindow, _mouseWindow);
 #ifdef FOCUS_FIRST
                         } else {
                             needs_raise = needs_raise && is_main_window(_frontmostApp, _focusedWindow,
-                                is_pwa(frontmostApp.bundleIdentifier)) && (mouseWindow_pid != frontmost_pid ||
-                                !contained_within(_focusedWindow, _mouseWindow));
-                        }
-                        if (needs_raise && delayCount && raiseDelayCount != 1) {
-                            OSStatus error = GetProcessForPID(frontmost_pid, &focusedWindow_psn);
-                            if (!error) { _focusedWindow_psn = &focusedWindow_psn; }
+                                is_pwa(frontmostApp.bundleIdentifier)) && ((mouseWindow_pid != frontmost_pid &&
+                                !workaround_for_apps_raising_on_focus) || !contained_within(_focusedWindow, _mouseWindow));
+                            if (needs_raise) {
+                                OSStatus error = GetProcessForPID(frontmost_pid, &focusedWindow_psn);
+                                if (!error) { _focusedWindow_psn = &focusedWindow_psn; }
+                            }
                         }
 #endif
                         CFRelease(_focusedWindow);
@@ -1162,7 +1179,7 @@ void onTick() {
                         if (raiseTimes) { raiseTimes--; }
                         else { raiseTimes = 3; }
 #ifdef FOCUS_FIRST
-                        if (delayCount && raiseDelayCount != 1) {
+                        if (focus_first) {
                             OSStatus error = GetProcessForPID(mouseWindow_pid, &mouseWindow_psn);
                             if (!error) {
                                 bool floating_window = false;
@@ -1179,9 +1196,11 @@ void onTick() {
                                     CFRelease(_element_sub_role);
                                 }
                                 if (!floating_window) {
-                                    // TODO: method below seems unable to focus floating windows
-                                    window_manager_focus_window_without_raise(&mouseWindow_psn,
-                                        mouseWindow_id, _focusedWindow_psn, focusedWindow_id);
+                                    if (!workaround_for_apps_raising_on_focus || raiseDelayCount == 0) {
+                                        // TODO: method below seems unable to focus floating windows
+                                        window_manager_focus_window_without_raise(&mouseWindow_psn,
+                                            mouseWindow_id, _focusedWindow_psn, focusedWindow_id);
+                                    }
                                 } else if (verbose) { NSLog(@"Unable to focus floating window"); }
                                 if (_lastFocusedWindow) { CFRelease(_lastFocusedWindow); }
                                 _lastFocusedWindow = _mouseWindow;
@@ -1207,9 +1226,6 @@ void onTick() {
 #ifdef FOCUS_FIRST
             }
 #endif
-        } else {
-            raiseTimes = 0;
-            delayTicks = 0;
         }
     }
 }
@@ -1236,10 +1252,8 @@ CGEventRef eventTapHandler(CGEventTapProxy proxy, CGEventType type, CGEventRef e
     if (type == kCGEventKeyDown) {
         CGKeyCode keycode = (CGKeyCode) CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode);
         if (keycode == kVK_Tab) {
-            CGEventFlags flags = CGEventGetFlags(event);
             commandTabPressed = commandTabPressed || commandPressed;
         } else if (warpMouse && keycode == kVK_ANSI_Grave) {
-            CGEventFlags flags = CGEventGetFlags(event);
             commandGravePressed = commandGravePressed || commandPressed;
         }
     } else if (type == kCGEventTapDisabledByTimeout || type == kCGEventTapDisabledByUserInput) {
@@ -1264,10 +1278,12 @@ int main(int argc, const char * argv[]) {
         altTaskSwitcher    = [parameters[kAltTaskSwitcher] boolValue];
         mouseDelta         = [parameters[kMouseDelta] floatValue];
         pollMillis         = [parameters[kPollMillis] intValue];
+        requireMouseStop   = [parameters[kRequireMouseStop] boolValue];
         ignoreSpaceChanged = [parameters[kIgnoreSpaceChanged] boolValue];
         invertIgnoreApps   = [parameters[kInvertIgnoreApps] boolValue];
+        invertDisableKey   = [parameters[kInvertDisableKey] boolValue];
 
-        printf("\nv%s by sbmpost(c) 2025, usage:\n\nAutoRaise\n", AUTORAISE_VERSION);
+        printf("\nv%s by sbmpost(c) 2026, usage:\n\nAutoRaise\n", AUTORAISE_VERSION);
         printf("  -pollMillis <20, 30, 40, 50, ...>\n");
         printf("  -delay <0=no-raise, 1=no-delay, 2=%dms, 3=%dms, ...>\n", pollMillis, pollMillis*2);
 #ifdef FOCUS_FIRST
@@ -1275,7 +1291,9 @@ int main(int argc, const char * argv[]) {
 #endif
         printf("  -warpX <0.5> -warpY <0.5> -scale <2.0>\n");
         printf("  -altTaskSwitcher <true|false>\n");
+        printf("  -requireMouseStop <true|false>\n");
         printf("  -ignoreSpaceChanged <true|false>\n");
+        printf("  -invertDisableKey <true|false>\n");
         printf("  -invertIgnoreApps <true|false>\n");
         printf("  -ignoreApps \"<App1,App2,...>\"\n");
         printf("  -ignoreTitles \"<Regex1,Regex2,...>\"\n");
@@ -1307,7 +1325,9 @@ int main(int argc, const char * argv[]) {
             printf("  * altTaskSwitcher: %s\n", altTaskSwitcher ? "true" : "false");
         }
 
+        printf("  * requireMouseStop: %s\n", requireMouseStop ? "true" : "false");
         printf("  * ignoreSpaceChanged: %s\n", ignoreSpaceChanged ? "true" : "false");
+        printf("  * invertDisableKey: %s\n", invertDisableKey ? "true" : "false");
         printf("  * invertIgnoreApps: %s\n", invertIgnoreApps ? "true" : "false");
 
         NSMutableArray * ignoreA;
@@ -1365,6 +1385,9 @@ int main(int argc, const char * argv[]) {
 #endif
 #ifdef ALTERNATIVE_TASK_SWITCHER
         printf("  * ALTERNATIVE_TASK_SWITCHER\n");
+#endif
+#ifdef FOCUS_WITHOUT_MOUSE_STOP
+        printf("  * FOCUS_WITHOUT_MOUSE_STOP\n");
 #endif
 #endif
         printf("\n");
