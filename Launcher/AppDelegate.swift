@@ -44,6 +44,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @IBOutlet weak var enableWarpButton: NSButton!
     @IBOutlet weak var enableCurserScalingButton: NSButton!
     @IBOutlet weak var enableAltTaskSwitcherButton: NSButton!
+    @IBOutlet weak var warpOnlyAcrossScreensButton: NSButton!
     @IBOutlet weak var enableOnLaunchButton: NSButton!
     @IBOutlet weak var launchAtLoginButton: NSButton!
     @IBOutlet weak var hideIconButton: NSButton!
@@ -93,6 +94,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var enableWarp = NSControl.StateValue.off
     var enableCursorScaling = NSControl.StateValue.off
     var enableAltTaskSwitcher = NSControl.StateValue.off
+    var warpOnlyAcrossScreens = NSControl.StateValue.off
     var enableOnLaunch = NSControl.StateValue.off
     var hideIcon = NSControl.StateValue.off
     var requireMouseStop = NSControl.StateValue.on
@@ -277,6 +279,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         enableWarp = enableWarpButton.state
         enableCurserScalingButton.isEnabled = (enableWarp == NSControl.StateValue.on)
         enableAltTaskSwitcherButton.isEnabled = (enableWarp == NSControl.StateValue.on)
+        warpOnlyAcrossScreensButton.isEnabled = (enableWarp == NSControl.StateValue.on)
         self.prefs.set(enableWarp == NSControl.StateValue.on ? "1" : "0", forKey: "enableWarp")
         if autoRaiseService.isRunning {
             self.stopService(self)
@@ -294,6 +297,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     
+    @IBAction func warpOnlyAcrossScreens(_ sender: NSButton) {
+        warpOnlyAcrossScreens = warpOnlyAcrossScreensButton.state
+        self.prefs.set(warpOnlyAcrossScreens == NSControl.StateValue.on ? "1" : "0",
+            forKey: "warpOnlyAcrossScreens")
+        if autoRaiseService.isRunning {
+            self.stopService(self)
+            self.startService(self)
+        }
+    }
+
     @IBAction func enableAltTaskSwitcher(_ sender: NSButton) {
         enableAltTaskSwitcher = enableAltTaskSwitcherButton.state
         self.prefs.set(enableAltTaskSwitcher == NSControl.StateValue.on ? "1" : "0", forKey: "enableAltTaskSwitcher")
@@ -434,6 +447,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if let rawValue = prefs.string(forKey: "enableCursorScaling") {
             enableCursorScaling = NSControl.StateValue(rawValue: Int(rawValue) ?? 0)
         }
+        if let rawValue = prefs.string(forKey: "warpOnlyAcrossScreens") {
+            warpOnlyAcrossScreens = NSControl.StateValue(rawValue: Int(rawValue) ?? 0)
+        }
         if let rawValue = prefs.string(forKey: "enableAltTaskSwitcher") {
             enableAltTaskSwitcher = NSControl.StateValue(rawValue: Int(rawValue) ?? 0)
         }
@@ -487,6 +503,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         enableWarpButton.state = enableWarp
         enableCurserScalingButton.state = enableCursorScaling
         enableAltTaskSwitcherButton.state = enableAltTaskSwitcher
+        warpOnlyAcrossScreensButton.state = warpOnlyAcrossScreens
         ignoreAppsEdit.stringValue = ignoreApps
         ignoreTitlesEdit.stringValue = ignoreTitles
         stayFocusedBundleIdsEdit.stringValue = stayFocusedBundleIds
@@ -500,9 +517,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if enableWarp == NSControl.StateValue.on {
             enableCurserScalingButton.isEnabled = true
             enableAltTaskSwitcherButton.isEnabled = true
+            warpOnlyAcrossScreensButton.isEnabled = true
         } else {
             enableCurserScalingButton.isEnabled = false
             enableAltTaskSwitcherButton.isEnabled = false
+            warpOnlyAcrossScreensButton.isEnabled = false
         }
         delaySlider.integerValue = autoRaiseDelay
         focusDelaySlider.integerValue = autoFocusDelay
@@ -633,6 +652,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                         autoRaiseService.arguments! += ["-scale", "2.0"]
                     } else {
                         autoRaiseService.arguments! += ["-scale", "1.0"]
+                    }
+                    if ( warpOnlyAcrossScreens == NSControl.StateValue.on ) {
+                        autoRaiseService.arguments! += ["-warpOnlyAcrossScreens", "true"]
                     }
                 }
                 if ( enableAltTaskSwitcher == NSControl.StateValue.on ) {

@@ -39,6 +39,7 @@
                 <outlet property="requireMouseStopButton" destination="3jf-pK-VIB" id="HRk-C7-gdO"/>
                 <outlet property="requireMultipleScreensButton" destination="Qm1-Rs-Ax7" id="Qm4-Rs-Dy0"/>
                 <outlet property="requireScreenChangeButton" destination="Sc1-Tv-Ez1" id="Sc4-Tv-Hz4"/>
+                <outlet property="warpOnlyAcrossScreensButton" destination="Wq1-Ax-Sc7" id="Wq4-Ax-Sf0"/>
                 <outlet property="shortcutView" destination="031-xd-XPj" id="p0f-ci-9gY"/>
                 <outlet property="stayFocusedBundleIdsEdit" destination="ji5-wV-kFn" id="UbZ-Ct-gXO"/>
                 <outlet property="window" destination="QvC-M9-y7g" id="gIp-Ho-8D9"/>
@@ -698,33 +699,33 @@
         <window identifier="prefsWindow" title="AutoRaise Preferences" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" releasedWhenClosed="NO" visibleAtLaunch="NO" animationBehavior="default" id="QvC-M9-y7g">
             <windowStyleMask key="styleMask" titled="YES" closable="YES"/>
             <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
-            <rect key="contentRect" x="335" y="390" width="546" height="772"/>
+            <rect key="contentRect" x="335" y="390" width="546" height="794"/>
             <rect key="screenRect" x="0.0" y="0.0" width="1147" height="719"/>
             <view key="contentView" id="EiT-Mj-1SZ">
-                <rect key="frame" x="0.0" y="0.0" width="546" height="772"/>
+                <rect key="frame" x="0.0" y="0.0" width="546" height="794"/>
                 <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                 <subviews>
                     <tabView id="2ZC-t0-UJb">
-                        <rect key="frame" x="13" y="2" width="520" height="764"/>
+                        <rect key="frame" x="13" y="2" width="520" height="786"/>
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                         <font key="font" metaFont="system"/>
                         <tabViewItems>
                             <tabViewItem label="Settings" identifier="1" id="prW-6p-c3W">
                                 <view key="view" id="YLs-I7-lL0">
-                                    <rect key="frame" x="10" y="33" width="500" height="718"/>
+                                    <rect key="frame" x="10" y="33" width="500" height="740"/>
                                     <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                     <subviews>
                                         <box title="Mouse Warp" translatesAutoresizingMaskIntoConstraints="NO" id="fkc-1N-4xh">
-                                            <rect key="frame" x="25" y="465" width="450" height="107"/>
+                                            <rect key="frame" x="25" y="465" width="450" height="129"/>
                                             <constraints>
-                                                <constraint firstAttribute="height" constant="107" id="Ha2-Bo-Xh2"/>
+                                                <constraint firstAttribute="height" constant="129" id="Ha2-Bo-Xh2"/>
                                             </constraints>
                                             <view key="contentView" id="Jfl-t3-0Hr">
-                                                <rect key="frame" x="0.0" y="0.0" width="450" height="95"/>
+                                                <rect key="frame" x="0.0" y="0.0" width="450" height="117"/>
                                                 <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                                 <subviews>
                                                     <button verticalHuggingPriority="750" id="BQn-Wh-SrZ">
-                                                        <rect key="frame" x="10" y="64" width="338" height="18"/>
+                                                        <rect key="frame" x="10" y="86" width="338" height="18"/>
                                                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                                         <buttonCell key="cell" type="check" title="Warp mouse pointer to center of activated windows" bezelStyle="regularSquare" imagePosition="left" inset="2" id="c2G-na-Rzs">
                                                             <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
@@ -735,7 +736,7 @@
                                                         </connections>
                                                     </button>
                                                     <button verticalHuggingPriority="750" id="lA4-hc-8Qh">
-                                                        <rect key="frame" x="28" y="42" width="306" height="18"/>
+                                                        <rect key="frame" x="28" y="64" width="306" height="18"/>
                                                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                                         <buttonCell key="cell" type="check" title="Temporarily increase cursor size after warping" bezelStyle="regularSquare" imagePosition="left" inset="2" id="KC9-fr-Baa">
                                                             <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
@@ -745,8 +746,19 @@
                                                             <action selector="enableCursorScaling:" target="Voe-Tx-rLC" id="b3c-fC-hUC"/>
                                                         </connections>
                                                     </button>
+                                                    <button verticalHuggingPriority="750" id="Wq1-Ax-Sc7">
+                                                        <rect key="frame" x="28" y="20" width="330" height="18"/>
+                                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                                        <buttonCell key="cell" type="check" title="Only warp to windows on another screen" bezelStyle="regularSquare" imagePosition="left" inset="2" id="Wq2-Ax-Sd8">
+                                                            <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
+                                                            <font key="font" metaFont="system"/>
+                                                        </buttonCell>
+                                                        <connections>
+                                                            <action selector="warpOnlyAcrossScreens:" target="Voe-Tx-rLC" id="Wq3-Ax-Se9"/>
+                                                        </connections>
+                                                    </button>
                                                     <button verticalHuggingPriority="750" id="Cvm-0Q-cR9">
-                                                        <rect key="frame" x="28" y="20" width="366" height="18"/>
+                                                        <rect key="frame" x="28" y="42" width="366" height="18"/>
                                                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                                         <buttonCell key="cell" type="check" title="Use alternative task switcher (other than command-tab)" bezelStyle="regularSquare" imagePosition="left" inset="2" id="nST-1O-BWx">
                                                             <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
@@ -760,7 +772,7 @@
                                             </view>
                                         </box>
                                         <box title="Raise &amp; Focus delay" translatesAutoresizingMaskIntoConstraints="NO" id="igU-aT-qWK">
-                                            <rect key="frame" x="25" y="580" width="450" height="130"/>
+                                            <rect key="frame" x="25" y="602" width="450" height="130"/>
                                             <constraints>
                                                 <constraint firstAttribute="height" constant="130" id="Ha1-Bo-Xh1"/>
                                             </constraints>
@@ -1136,7 +1148,7 @@
                             </tabViewItem>
                             <tabViewItem label="About" identifier="" id="8wr-bA-jie">
                                 <view key="view" id="97y-CL-YXi">
-                                    <rect key="frame" x="10" y="33" width="500" height="718"/>
+                                    <rect key="frame" x="10" y="33" width="500" height="740"/>
                                     <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                     <subviews>
                                         <textField verticalHuggingPriority="750" horizontalCompressionResistancePriority="250" setsMaxLayoutWidthAtFirstLayout="YES" id="4Je-U3-qzh">
