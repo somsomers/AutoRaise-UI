@@ -28,7 +28,7 @@
 #include <Carbon/Carbon.h>
 #include <libproc.h>
 
-#define AUTORAISE_VERSION "5.6"
+#define AUTORAISE_VERSION "5.7"
 #define STACK_THRESHOLD 20
 
 #ifdef EXPERIMENTAL_FOCUS_FIRST
@@ -140,6 +140,8 @@ static CGPoint desktopOrigin = {0, 0};
 static CGPoint oldPoint = {0, 0};
 static bool propagateMouseMoved = false;
 static bool requireMouseStop = true;
+static bool requireMultipleScreens = false;
+static bool requireScreenChange = false;
 static bool ignoreSpaceChanged = false;
 static bool invertDisableKey = false;
 static bool invertIgnoreApps = false;
@@ -585,6 +587,58 @@ inline NSScreen * findScreen(CGPoint point) {
     return NULL;
 }
 
+inline NSScreen * window_screen(AXUIElementRef _window) {
+    NSScreen * screen = NULL;
+    AXValueRef _pos = NULL;
+    AXUIElementCopyAttributeValue(_window, kAXPositionAttribute, (CFTypeRef *) &_pos);
+    if (_pos) {
+        CGPoint cg_pos;
+        if (AXValueGetValue(_pos, kAXValueTypeCGPoint, &cg_pos)) { screen = findScreen(cg_pos); }
+        CFRelease(_pos);
+    }
+
+    return screen;
+}
+
+// Tiling window managers park windows of inactive workspaces almost fully
+// offscreen, leaving only the few pixels macOS insists on. Raising such a sliver
+// switches workspace and parks the previous window in its place, which without
+// this check makes the two raise each other indefinitely.
+#define MIN_VISIBLE 4
+inline bool mostly_offscreen(AXUIElementRef _window, CGPoint point) {
+    bool offscreen = false;
+    NSScreen * screen = findScreen(point);
+    if (screen) {
+        AXValueRef _size = NULL;
+        AXValueRef _pos = NULL;
+        AXUIElementCopyAttributeValue(_window, kAXSizeAttribute, (CFTypeRef *) &_size);
+        if (_size) {
+            AXUIElementCopyAttributeValue(_window, kAXPositionAttribute, (CFTypeRef *) &_pos);
+            if (_pos) {
+                CGSize cg_size;
+                CGPoint cg_pos;
+                if (AXValueGetValue(_size, kAXValueTypeCGSize, &cg_size) &&
+                    AXValueGetValue(_pos, kAXValueTypeCGPoint, &cg_pos)) {
+                    NSScreen * main_screen = NSScreen.screens[0];
+                    NSRect visible = NSIntersectionRect(
+                        NSMakeRect(
+                            NSMinX(screen.frame) - NSMinX(main_screen.frame),
+                            NSMaxY(main_screen.frame) - NSMaxY(screen.frame),
+                            NSWidth(screen.frame),
+                            NSHeight(screen.frame)),
+                        NSMakeRect(cg_pos.x, cg_pos.y, cg_size.width, cg_size.height));
+                    offscreen = NSWidth(visible) < MIN_VISIBLE || NSHeight(visible) < MIN_VISIBLE;
+                }
+                CFRelease(_pos);
+            }
+            CFRelease(_size);
+        }
+    }
+
+    if (verbose && offscreen) { NSLog(@"Offscreen window"); }
+    return offscreen;
+}
+
 inline bool is_desktop_window(AXUIElementRef _window) {
     bool desktop_window = false;
     AXValueRef _pos = NULL;
@@ -666,8 +720,10 @@ inline bool is_main_window(AXUIElementRef _app, AXUIElementRef _window, bool chr
 inline bool is_pwa(NSString * bundleIdentifier) {
     NSArray * components = [bundleIdentifier componentsSeparatedByString: @"."];
     bool pake = components.count == 3 && [components[1] isEqual: Pake];
-    bool pwa = pake || (components.count > 4 &&
-        [pwas containsObject: components[2]] && [components[3] isEqual: @"app"]);
+    // browser channels (canary, beta, dev) insert one component before "app"
+    bool pwa = pake || (components.count > 4 && [pwas containsObject: components[2]] &&
+        ([components[3] isEqual: @"app"] ||
+        (components.count > 5 && [components[4] isEqual: @"app"])));
     if (verbose && pwa) { NSLog(@"PWA: %@", components[2]); }
     return pwa;
 }
@@ -770,6 +826,8 @@ const NSString *kScale = @"scale";
 const NSString *kVerbose = @"verbose";
 const NSString *kAltTaskSwitcher = @"altTaskSwitcher";
 const NSString *kRequireMouseStop = @"requireMouseStop";
+const NSString *kRequireMultipleScreens = @"requireMultipleScreens";
+const NSString *kRequireScreenChange = @"requireScreenChange";
 const NSString *kIgnoreSpaceChanged = @"ignoreSpaceChanged";
 const NSString *kStayFocusedBundleIds = @"stayFocusedBundleIds";
 const NSString *kInvertDisableKey = @"invertDisableKey";
@@ -782,12 +840,14 @@ const NSString *kDisableKey = @"disableKey";
 #ifdef FOCUS_FIRST
 const NSString *kFocusDelay = @"focusDelay";
 NSArray *parametersDictionary = @[kDelay, kWarpX, kWarpY, kScale, kVerbose, kAltTaskSwitcher,
-    kFocusDelay, kRequireMouseStop, kIgnoreSpaceChanged, kInvertDisableKey, kInvertIgnoreApps,
-    kIgnoreApps, kIgnoreTitles, kStayFocusedBundleIds, kDisableKey, kMouseDelta, kPollMillis];
+    kFocusDelay, kRequireMouseStop, kRequireMultipleScreens, kRequireScreenChange,
+    kIgnoreSpaceChanged, kInvertDisableKey, kInvertIgnoreApps, kIgnoreApps, kIgnoreTitles,
+    kStayFocusedBundleIds, kDisableKey, kMouseDelta, kPollMillis];
 #else
 NSArray *parametersDictionary = @[kDelay, kWarpX, kWarpY, kScale, kVerbose, kAltTaskSwitcher,
-    kRequireMouseStop, kIgnoreSpaceChanged, kInvertDisableKey, kInvertIgnoreApps, kIgnoreApps,
-    kIgnoreTitles, kStayFocusedBundleIds, kDisableKey, kMouseDelta, kPollMillis];
+    kRequireMouseStop, kRequireMultipleScreens, kRequireScreenChange, kIgnoreSpaceChanged,
+    kInvertDisableKey, kInvertIgnoreApps, kIgnoreApps, kIgnoreTitles, kStayFocusedBundleIds,
+    kDisableKey, kMouseDelta, kPollMillis];
 #endif
 NSMutableDictionary *parameters = [[NSMutableDictionary alloc] init];
 
@@ -986,9 +1046,7 @@ void onTick() {
 
     bool mouseMoved = fabs(mouse_x_diff) > mouseDelta;
     mouseMoved = mouseMoved || fabs(mouse_y_diff) > mouseDelta;
-#if !defined FOCUS_FIRST || !defined FOCUS_WITHOUT_MOUSE_STOP
     bool mouseStopped = !mouseMoved;
-#endif
     mouseMoved = mouseMoved || propagateMouseMoved;
     propagateMouseMoved = false;
 
@@ -1074,7 +1132,8 @@ void onTick() {
         // don't raise for as long as something is being dragged (resizing a window for instance)
         bool abort = CGEventSourceButtonState(kCGEventSourceStateCombinedSessionState, kCGMouseButtonLeft) ||
             CGEventSourceButtonState(kCGEventSourceStateCombinedSessionState, kCGMouseButtonRight) ||
-            dock_active() || mc_active();
+            dock_active() || mc_active() ||
+            (requireMultipleScreens && NSScreen.screens.count < 2);
 
         if (!abort && disableKey) {
             CGEventRef _keyDownEvent = CGEventCreateKeyboardEvent(NULL, 0, true);
@@ -1166,12 +1225,17 @@ void onTick() {
 #endif
                 }
                 CFRelease(_mouseWindowApp);
+                if (needs_raise && mostly_offscreen(_mouseWindow, mousePoint)) {
+                    needs_raise = false;
+                    if (verbose) { NSLog(@"Excluding offscreen window"); }
+                }
                 CGWindowID focusedWindow_id;
 #ifdef FOCUS_FIRST
                 ProcessSerialNumber mouseWindow_psn;
                 ProcessSerialNumber focusedWindow_psn;
                 ProcessSerialNumber * _focusedWindow_psn = NULL;
 #endif
+                bool needs_raise_and_not_contained_within = false;
                 if (needs_raise) {
                     pid_t frontmost_pid = frontmostApp.processIdentifier;
                     AXUIElementRef _frontmostApp = AXUIElementCreateApplication(frontmost_pid);
@@ -1184,15 +1248,22 @@ void onTick() {
                         if (verbose) { logWindowTitle(@"Focused window", _focusedWindow); }
                         _AXUIElementGetWindow(_focusedWindow, &focusedWindow_id);
                         needs_raise = mouseWindow_id != focusedWindow_id;
+                        if (needs_raise && requireScreenChange &&
+                            window_screen(_focusedWindow) == findScreen(mousePoint)) {
+                            needs_raise = false;
+                            if (verbose) { NSLog(@"Excluding same screen"); }
+                        }
+                        needs_raise_and_not_contained_within = needs_raise &&
+                            !contained_within(_focusedWindow, _mouseWindow);
 #ifdef FOCUS_FIRST
                         if (!focus_first) {
 #endif
-                            needs_raise = needs_raise && !contained_within(_focusedWindow, _mouseWindow);
+                            needs_raise = needs_raise_and_not_contained_within;
 #ifdef FOCUS_FIRST
                         } else {
                             needs_raise = needs_raise && is_main_window(_frontmostApp, _focusedWindow,
                                 is_pwa(frontmostApp.bundleIdentifier)) && ((mouseWindow_pid != frontmost_pid &&
-                                !workaround_for_apps_raising_on_focus) || !contained_within(_focusedWindow, _mouseWindow));
+                                !workaround_for_apps_raising_on_focus) || needs_raise_and_not_contained_within);
                             if (needs_raise) {
                                 OSStatus error = GetProcessForPID(frontmost_pid, &focusedWindow_psn);
                                 if (!error) { _focusedWindow_psn = &focusedWindow_psn; }
@@ -1250,7 +1321,9 @@ void onTick() {
                                 if (_lastFocusedWindow) { CFRelease(_lastFocusedWindow); }
                                 _lastFocusedWindow = _mouseWindow;
                                 lastFocusedWindow_pid = mouseWindow_pid;
-                                if (raiseDelayCount) { [workspaceWatcher windowFocused: _lastFocusedWindow]; }
+                                if (raiseDelayCount && needs_raise_and_not_contained_within) {
+                                    [workspaceWatcher windowFocused: _lastFocusedWindow];
+                                }
                             }
                         } else {
 #endif
@@ -1324,6 +1397,8 @@ int main(int argc, const char * argv[]) {
         mouseDelta         = [parameters[kMouseDelta] floatValue];
         pollMillis         = [parameters[kPollMillis] intValue];
         requireMouseStop   = [parameters[kRequireMouseStop] boolValue];
+        requireMultipleScreens = [parameters[kRequireMultipleScreens] boolValue];
+        requireScreenChange = [parameters[kRequireScreenChange] boolValue];
         ignoreSpaceChanged = [parameters[kIgnoreSpaceChanged] boolValue];
         invertIgnoreApps   = [parameters[kInvertIgnoreApps] boolValue];
         invertDisableKey   = [parameters[kInvertDisableKey] boolValue];
@@ -1337,6 +1412,8 @@ int main(int argc, const char * argv[]) {
         printf("  -warpX <0.5> -warpY <0.5> -scale <2.0>\n");
         printf("  -altTaskSwitcher <true|false>\n");
         printf("  -requireMouseStop <true|false>\n");
+        printf("  -requireMultipleScreens <true|false>\n");
+        printf("  -requireScreenChange <true|false>\n");
         printf("  -ignoreSpaceChanged <true|false>\n");
         printf("  -invertDisableKey <true|false>\n");
         printf("  -invertIgnoreApps <true|false>\n");
@@ -1371,6 +1448,8 @@ int main(int argc, const char * argv[]) {
         }
 
         printf("  * requireMouseStop: %s\n", requireMouseStop ? "true" : "false");
+        printf("  * requireMultipleScreens: %s\n", requireMultipleScreens ? "true" : "false");
+        printf("  * requireScreenChange: %s\n", requireScreenChange ? "true" : "false");
         printf("  * ignoreSpaceChanged: %s\n", ignoreSpaceChanged ? "true" : "false");
         printf("  * invertDisableKey: %s\n", invertDisableKey ? "true" : "false");
         printf("  * invertIgnoreApps: %s\n", invertIgnoreApps ? "true" : "false");
@@ -1430,9 +1509,6 @@ int main(int argc, const char * argv[]) {
 #endif
 #ifdef ALTERNATIVE_TASK_SWITCHER
         printf("  * ALTERNATIVE_TASK_SWITCHER\n");
-#endif
-#ifdef FOCUS_WITHOUT_MOUSE_STOP
-        printf("  * FOCUS_WITHOUT_MOUSE_STOP\n");
 #endif
 #endif
         printf("\n");
