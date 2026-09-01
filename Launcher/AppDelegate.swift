@@ -52,6 +52,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @IBOutlet weak var invertDisableKeyButton: NSButton!
     @IBOutlet weak var disableKeyBox: NSComboBox!
     @IBOutlet weak var requireMouseStopButton: NSButton!
+    @IBOutlet weak var requireMultipleScreensButton: NSButton!
+    @IBOutlet weak var requireScreenChangeButton: NSButton!
     @IBOutlet weak var ignoreSpaceChangedButton: NSButton!
     @IBOutlet weak var invertIgnoreAppsButton: NSButton!
     @IBOutlet weak var mouseDeltaEdit: NSTextField!
@@ -92,6 +94,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var enableOnLaunch = NSControl.StateValue.off
     var hideIcon = NSControl.StateValue.off
     var requireMouseStop = NSControl.StateValue.on
+    var requireMultipleScreens = NSControl.StateValue.off
+    var requireScreenChange = NSControl.StateValue.off
     var ignoreSpaceChanged = NSControl.StateValue.off
     var invertDisableKey = NSControl.StateValue.off
     var invertIgnoreApps = NSControl.StateValue.off
@@ -277,6 +281,26 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    @IBAction func requireMultipleScreens(_ sender: Any) {
+        requireMultipleScreens = requireMultipleScreensButton.state
+        self.prefs.set(requireMultipleScreens == NSControl.StateValue.on ? "1" : "0",
+            forKey: "requireMultipleScreens")
+        if autoRaiseService.isRunning {
+            self.stopService(self)
+            self.startService(self)
+        }
+    }
+
+    @IBAction func requireScreenChange(_ sender: Any) {
+        requireScreenChange = requireScreenChangeButton.state
+        self.prefs.set(requireScreenChange == NSControl.StateValue.on ? "1" : "0",
+            forKey: "requireScreenChange")
+        if autoRaiseService.isRunning {
+            self.stopService(self)
+            self.startService(self)
+        }
+    }
+
     @IBAction func ignoreSpaceChanged(_ sender: Any) {
         ignoreSpaceChanged = ignoreSpaceChangedButton.state
         self.prefs.set(ignoreSpaceChanged == NSControl.StateValue.on ? "1" : "0",
@@ -351,6 +375,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if let rawValue = prefs.string(forKey: "requireMouseStop") {
             requireMouseStop = NSControl.StateValue(rawValue: Int(rawValue) ?? 0)
         }
+        if let rawValue = prefs.string(forKey: "requireMultipleScreens") {
+            requireMultipleScreens = NSControl.StateValue(rawValue: Int(rawValue) ?? 0)
+        }
+        if let rawValue = prefs.string(forKey: "requireScreenChange") {
+            requireScreenChange = NSControl.StateValue(rawValue: Int(rawValue) ?? 0)
+        }
         if let rawValue = prefs.string(forKey: "ignoreSpaceChanged") {
             ignoreSpaceChanged = NSControl.StateValue(rawValue: Int(rawValue) ?? 0)
         }
@@ -394,6 +424,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         stayFocusedBundleIdsEdit.stringValue = stayFocusedBundleIds
         disableKeyBox.stringValue = disableKey
         requireMouseStopButton.state = requireMouseStop
+        requireMultipleScreensButton.state = requireMultipleScreens
+        requireScreenChangeButton.state = requireScreenChange
         ignoreSpaceChangedButton.state = ignoreSpaceChanged
         invertDisableKeyButton.state = invertDisableKey
         invertIgnoreAppsButton.state = invertIgnoreApps
@@ -551,6 +583,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 }
                 if ( requireMouseStop == NSControl.StateValue.off ) {
                     autoRaiseService.arguments! += ["-requireMouseStop", "false"]
+                }
+                if ( requireMultipleScreens == NSControl.StateValue.on ) {
+                    autoRaiseService.arguments! += ["-requireMultipleScreens", "true"]
+                }
+                if ( requireScreenChange == NSControl.StateValue.on ) {
+                    autoRaiseService.arguments! += ["-requireScreenChange", "true"]
                 }
                 if ( ignoreSpaceChanged == NSControl.StateValue.on ) {
                     autoRaiseService.arguments! += ["-ignoreSpaceChanged", "true"]

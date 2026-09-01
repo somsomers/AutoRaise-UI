@@ -36,6 +36,8 @@
                 <outlet property="mouseDeltaEdit" destination="tJl-mG-QVd" id="1JW-q1-QmQ"/>
                 <outlet property="pollMillisEdit" destination="cfJ-Qr-aBm" id="KvI-5v-m0Z"/>
                 <outlet property="requireMouseStopButton" destination="3jf-pK-VIB" id="HRk-C7-gdO"/>
+                <outlet property="requireMultipleScreensButton" destination="Qm1-Rs-Ax7" id="Qm4-Rs-Dy0"/>
+                <outlet property="requireScreenChangeButton" destination="Sc1-Tv-Ez1" id="Sc4-Tv-Hz4"/>
                 <outlet property="shortcutView" destination="031-xd-XPj" id="p0f-ci-9gY"/>
                 <outlet property="stayFocusedBundleIdsEdit" destination="ji5-wV-kFn" id="UbZ-Ct-gXO"/>
                 <outlet property="window" destination="QvC-M9-y7g" id="gIp-Ho-8D9"/>
@@ -695,24 +697,27 @@
         <window identifier="prefsWindow" title="AutoRaise Preferences" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" releasedWhenClosed="NO" visibleAtLaunch="NO" animationBehavior="default" id="QvC-M9-y7g">
             <windowStyleMask key="styleMask" titled="YES" closable="YES"/>
             <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
-            <rect key="contentRect" x="335" y="390" width="546" height="712"/>
+            <rect key="contentRect" x="335" y="390" width="546" height="772"/>
             <rect key="screenRect" x="0.0" y="0.0" width="1147" height="719"/>
             <view key="contentView" id="EiT-Mj-1SZ">
-                <rect key="frame" x="0.0" y="0.0" width="546" height="712"/>
+                <rect key="frame" x="0.0" y="0.0" width="546" height="772"/>
                 <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                 <subviews>
                     <tabView id="2ZC-t0-UJb">
-                        <rect key="frame" x="13" y="2" width="520" height="704"/>
+                        <rect key="frame" x="13" y="2" width="520" height="764"/>
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                         <font key="font" metaFont="system"/>
                         <tabViewItems>
                             <tabViewItem label="Settings" identifier="1" id="prW-6p-c3W">
                                 <view key="view" id="YLs-I7-lL0">
-                                    <rect key="frame" x="10" y="33" width="500" height="658"/>
+                                    <rect key="frame" x="10" y="33" width="500" height="718"/>
                                     <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                     <subviews>
                                         <box title="Mouse Warp" translatesAutoresizingMaskIntoConstraints="NO" id="fkc-1N-4xh">
-                                            <rect key="frame" x="25" y="405" width="450" height="107"/>
+                                            <rect key="frame" x="25" y="465" width="450" height="107"/>
+                                            <constraints>
+                                                <constraint firstAttribute="height" constant="107" id="Ha2-Bo-Xh2"/>
+                                            </constraints>
                                             <view key="contentView" id="Jfl-t3-0Hr">
                                                 <rect key="frame" x="0.0" y="0.0" width="450" height="95"/>
                                                 <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
@@ -754,7 +759,10 @@
                                             </view>
                                         </box>
                                         <box title="Raise &amp; Focus delay" translatesAutoresizingMaskIntoConstraints="NO" id="igU-aT-qWK">
-                                            <rect key="frame" x="25" y="520" width="450" height="130"/>
+                                            <rect key="frame" x="25" y="580" width="450" height="130"/>
+                                            <constraints>
+                                                <constraint firstAttribute="height" constant="130" id="Ha1-Bo-Xh1"/>
+                                            </constraints>
                                             <view key="contentView" id="5yu-GC-Kfl">
                                                 <rect key="frame" x="0.0" y="0.0" width="450" height="118"/>
                                                 <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
@@ -804,7 +812,10 @@
                                             </view>
                                         </box>
                                         <box title="When to enable/disable" translatesAutoresizingMaskIntoConstraints="NO" id="yy7-AM-oqU">
-                                            <rect key="frame" x="25" y="197" width="450" height="200"/>
+                                            <rect key="frame" x="25" y="257" width="450" height="200"/>
+                                            <constraints>
+                                                <constraint firstAttribute="height" constant="200" id="Ha3-Bo-Xh3"/>
+                                            </constraints>
                                             <view key="contentView" id="rLm-SG-aUR">
                                                 <rect key="frame" x="0.0" y="0.0" width="450" height="188"/>
                                                 <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
@@ -979,9 +990,9 @@
                                             </view>
                                         </box>
                                         <box title="Miscellaneous" translatesAutoresizingMaskIntoConstraints="NO" id="CyZ-za-BFO">
-                                            <rect key="frame" x="25" y="14" width="450" height="175"/>
+                                            <rect key="frame" x="25" y="14" width="450" height="235"/>
                                             <view key="contentView" id="qkj-wF-wiy">
-                                                <rect key="frame" x="0.0" y="0.0" width="450" height="163"/>
+                                                <rect key="frame" x="0.0" y="0.0" width="450" height="223"/>
                                                 <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                                 <subviews>
                                                     <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="fmd-cx-lWE">
@@ -1045,6 +1056,28 @@
                                                             <action selector="ignoreSpaceChanged:" target="Voe-Tx-rLC" id="kfZ-qt-ybI"/>
                                                         </connections>
                                                     </button>
+                                                    <button verticalHuggingPriority="750" id="Qm1-Rs-Ax7">
+                                                        <rect key="frame" x="10" y="197" width="320" height="18"/>
+                                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                                        <buttonCell key="cell" type="check" title="Only raise/focus with two or more screens" bezelStyle="regularSquare" imagePosition="left" inset="2" id="Qm2-Rs-Bx8">
+                                                            <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
+                                                            <font key="font" metaFont="system"/>
+                                                        </buttonCell>
+                                                        <connections>
+                                                            <action selector="requireMultipleScreens:" target="Voe-Tx-rLC" id="Qm3-Rs-Cx9"/>
+                                                        </connections>
+                                                    </button>
+                                                    <button verticalHuggingPriority="750" id="Sc1-Tv-Ez1">
+                                                        <rect key="frame" x="10" y="167" width="300" height="18"/>
+                                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                                        <buttonCell key="cell" type="check" title="Only raise/focus when changing screen" bezelStyle="regularSquare" imagePosition="left" inset="2" id="Sc2-Tv-Fz2">
+                                                            <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
+                                                            <font key="font" metaFont="system"/>
+                                                        </buttonCell>
+                                                        <connections>
+                                                            <action selector="requireScreenChange:" target="Voe-Tx-rLC" id="Sc3-Tv-Gz3"/>
+                                                        </connections>
+                                                    </button>
                                                     <button verticalHuggingPriority="750" id="3jf-pK-VIB">
                                                         <rect key="frame" x="10" y="137" width="319" height="18"/>
                                                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
@@ -1091,7 +1124,7 @@
                             </tabViewItem>
                             <tabViewItem label="About" identifier="" id="8wr-bA-jie">
                                 <view key="view" id="97y-CL-YXi">
-                                    <rect key="frame" x="10" y="33" width="500" height="658"/>
+                                    <rect key="frame" x="10" y="33" width="500" height="718"/>
                                     <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                     <subviews>
                                         <textField verticalHuggingPriority="750" horizontalCompressionResistancePriority="250" setsMaxLayoutWidthAtFirstLayout="YES" id="4Je-U3-qzh">
