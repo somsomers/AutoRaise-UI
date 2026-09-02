@@ -496,24 +496,37 @@ AXUIElementRef get_mousewindow(CGPoint point) {
     return _window;
 }
 
-CGPoint get_mousepoint(AXUIElementRef _window) {
-    CGPoint mousepoint = {0, 0};
-    AXValueRef _size = NULL;
+inline bool windowPosition(AXUIElementRef _window, CGPoint * position) {
+    bool found = false;
     AXValueRef _pos = NULL;
+    AXUIElementCopyAttributeValue(_window, kAXPositionAttribute, (CFTypeRef *) &_pos);
+    if (_pos) {
+        found = AXValueGetValue(_pos, kAXValueTypeCGPoint, position);
+        CFRelease(_pos);
+    }
+
+    return found;
+}
+
+inline bool windowSize(AXUIElementRef _window, CGSize * size) {
+    bool found = false;
+    AXValueRef _size = NULL;
     AXUIElementCopyAttributeValue(_window, kAXSizeAttribute, (CFTypeRef *) &_size);
     if (_size) {
-        AXUIElementCopyAttributeValue(_window, kAXPositionAttribute, (CFTypeRef *) &_pos);
-        if (_pos) {
-            CGSize cg_size;
-            CGPoint cg_pos;
-            if (AXValueGetValue(_size, kAXValueTypeCGSize, &cg_size) &&
-                AXValueGetValue(_pos, kAXValueTypeCGPoint, &cg_pos)) {
-                mousepoint.x = cg_pos.x + (cg_size.width * warpX);
-                mousepoint.y = cg_pos.y + (cg_size.height * warpY);
-            }
-            CFRelease(_pos);
-        }
+        found = AXValueGetValue(_size, kAXValueTypeCGSize, size);
         CFRelease(_size);
+    }
+
+    return found;
+}
+
+CGPoint get_mousepoint(AXUIElementRef _window) {
+    CGPoint mousepoint = {0, 0};
+    CGSize cg_size;
+    CGPoint cg_pos;
+    if (windowSize(_window, &cg_size) && windowPosition(_window, &cg_pos)) {
+        mousepoint.x = cg_pos.x + (cg_size.width * warpX);
+        mousepoint.y = cg_pos.y + (cg_size.height * warpY);
     }
 
     return mousepoint;
@@ -521,38 +534,16 @@ CGPoint get_mousepoint(AXUIElementRef _window) {
 
 bool contained_within(AXUIElementRef _window1, AXUIElementRef _window2) {
     bool contained = false;
-    AXValueRef _size1 = NULL;
-    AXValueRef _size2 = NULL;
-    AXValueRef _pos1 = NULL;
-    AXValueRef _pos2 = NULL;
+    CGSize cg_size1;
+    CGSize cg_size2;
+    CGPoint cg_pos1;
+    CGPoint cg_pos2;
 
-    AXUIElementCopyAttributeValue(_window1, kAXSizeAttribute, (CFTypeRef *) &_size1);
-    if (_size1) {
-        AXUIElementCopyAttributeValue(_window1, kAXPositionAttribute, (CFTypeRef *) &_pos1);
-        if (_pos1) {
-            AXUIElementCopyAttributeValue(_window2, kAXSizeAttribute, (CFTypeRef *) &_size2);
-            if (_size2) {
-                AXUIElementCopyAttributeValue(_window2, kAXPositionAttribute, (CFTypeRef *) &_pos2);
-                if (_pos2) {
-                    CGSize cg_size1;
-                    CGSize cg_size2;
-                    CGPoint cg_pos1;
-                    CGPoint cg_pos2;
-                    if (AXValueGetValue(_size1, kAXValueTypeCGSize, &cg_size1) &&
-                        AXValueGetValue(_pos1, kAXValueTypeCGPoint, &cg_pos1) &&
-                        AXValueGetValue(_size2, kAXValueTypeCGSize, &cg_size2) &&
-                        AXValueGetValue(_pos2, kAXValueTypeCGPoint, &cg_pos2)) {
-                        contained = cg_pos1.x > cg_pos2.x && cg_pos1.y > cg_pos2.y &&
-                            cg_pos1.x + cg_size1.width < cg_pos2.x + cg_size2.width &&
-                            cg_pos1.y + cg_size1.height < cg_pos2.y + cg_size2.height;
-                    }
-                    CFRelease(_pos2);
-                }
-                CFRelease(_size2);
-            }
-            CFRelease(_pos1);
-        }
-        CFRelease(_size1);
+    if (windowSize(_window1, &cg_size1) && windowPosition(_window1, &cg_pos1) &&
+        windowSize(_window2, &cg_size2) && windowPosition(_window2, &cg_pos2)) {
+        contained = cg_pos1.x > cg_pos2.x && cg_pos1.y > cg_pos2.y &&
+            cg_pos1.x + cg_size1.width < cg_pos2.x + cg_size2.width &&
+            cg_pos1.y + cg_size1.height < cg_pos2.y + cg_size2.height;
     }
 
     return contained;
@@ -570,27 +561,32 @@ void findDockApplication() {
     if (verbose && !_dock_app) { NSLog(@"Dock application isn't running"); }
 }
 
+// The accessibility API reports positions from the top left of the main screen with
+// y growing downward, NSScreen frames start at their own bottom left with y growing
+// upward. This is the top left corner of a screen in accessibility coordinates.
+inline CGPoint screen_origin(NSScreen * screen) {
+    return CGPointMake(NSMinX(screen.frame),
+        NSMaxY(NSScreen.screens[0].frame) - NSMaxY(screen.frame));
+}
+
 void findDesktopOrigin() {
-    NSScreen * main_screen = NSScreen.screens[0];
-    float mainScreenTop = NSMaxY(main_screen.frame);
     for (NSScreen * screen in [NSScreen screens]) {
-        float screenOriginY = mainScreenTop - NSMaxY(screen.frame);
-        if (screenOriginY < desktopOrigin.y) { desktopOrigin.y = screenOriginY; }
-        if (screen.frame.origin.x < desktopOrigin.x) { desktopOrigin.x = screen.frame.origin.x; }
+        CGPoint origin = screen_origin(screen);
+        if (origin.y < desktopOrigin.y) { desktopOrigin.y = origin.y; }
+        if (origin.x < desktopOrigin.x) { desktopOrigin.x = origin.x; }
     }
 
     if (verbose) { NSLog(@"Desktop origin (%f, %f)", desktopOrigin.x, desktopOrigin.y); }
 }
 
 inline NSScreen * findScreen(CGPoint point) {
-    NSScreen * main_screen = NSScreen.screens[0];
-    point.y = NSMaxY(main_screen.frame) - point.y;
     for (NSScreen * screen in [NSScreen screens]) {
+        CGPoint origin = screen_origin(screen);
         NSRect screen_bounds = NSMakeRect(
-            screen.frame.origin.x,
-            screen.frame.origin.y,
-            NSWidth(screen.frame) + 1,
-            NSHeight(screen.frame) + 1
+            origin.x,
+            origin.y,
+            NSWidth(screen.frame),
+            NSHeight(screen.frame)
         );
         if (NSPointInRect(NSPointFromCGPoint(point), screen_bounds)) {
             return screen;
@@ -599,17 +595,17 @@ inline NSScreen * findScreen(CGPoint point) {
     return NULL;
 }
 
-inline NSScreen * window_screen(AXUIElementRef _window) {
-    NSScreen * screen = NULL;
-    AXValueRef _pos = NULL;
-    AXUIElementCopyAttributeValue(_window, kAXPositionAttribute, (CFTypeRef *) &_pos);
-    if (_pos) {
-        CGPoint cg_pos;
-        if (AXValueGetValue(_pos, kAXValueTypeCGPoint, &cg_pos)) { screen = findScreen(cg_pos); }
-        CFRelease(_pos);
+// Take the centre rather than the top left corner: a window straddling two screens
+// belongs to the one it is mostly on, not the one its corner happens to land in.
+inline NSScreen * findScreenByWindow(AXUIElementRef _window) {
+    CGPoint cg_pos;
+    CGSize cg_size;
+    if (windowPosition(_window, &cg_pos) && windowSize(_window, &cg_size)) {
+        return findScreen(CGPointMake(cg_pos.x + cg_size.width / 2,
+                                      cg_pos.y + cg_size.height / 2));
     }
 
-    return screen;
+    return NULL;
 }
 
 // Tiling window managers park windows of inactive workspaces almost fully
@@ -617,34 +613,18 @@ inline NSScreen * window_screen(AXUIElementRef _window) {
 // switches workspace and parks the previous window in its place, which without
 // this check makes the two raise each other indefinitely.
 #define MIN_VISIBLE 4
-inline bool mostly_offscreen(AXUIElementRef _window, CGPoint point) {
+inline bool is_offscreen_window(AXUIElementRef _window, CGPoint point) {
     bool offscreen = false;
     NSScreen * screen = findScreen(point);
-    if (screen) {
-        AXValueRef _size = NULL;
-        AXValueRef _pos = NULL;
-        AXUIElementCopyAttributeValue(_window, kAXSizeAttribute, (CFTypeRef *) &_size);
-        if (_size) {
-            AXUIElementCopyAttributeValue(_window, kAXPositionAttribute, (CFTypeRef *) &_pos);
-            if (_pos) {
-                CGSize cg_size;
-                CGPoint cg_pos;
-                if (AXValueGetValue(_size, kAXValueTypeCGSize, &cg_size) &&
-                    AXValueGetValue(_pos, kAXValueTypeCGPoint, &cg_pos)) {
-                    NSScreen * main_screen = NSScreen.screens[0];
-                    NSRect visible = NSIntersectionRect(
-                        NSMakeRect(
-                            NSMinX(screen.frame) - NSMinX(main_screen.frame),
-                            NSMaxY(main_screen.frame) - NSMaxY(screen.frame),
-                            NSWidth(screen.frame),
-                            NSHeight(screen.frame)),
-                        NSMakeRect(cg_pos.x, cg_pos.y, cg_size.width, cg_size.height));
-                    offscreen = NSWidth(visible) < MIN_VISIBLE || NSHeight(visible) < MIN_VISIBLE;
-                }
-                CFRelease(_pos);
-            }
-            CFRelease(_size);
-        }
+    CGSize cg_size;
+    CGPoint cg_pos;
+    if (screen && windowSize(_window, &cg_size) && windowPosition(_window, &cg_pos)) {
+        CGPoint origin = screen_origin(screen);
+        NSRect visible = NSIntersectionRect(
+            NSMakeRect(origin.x, origin.y,
+                NSWidth(screen.frame), NSHeight(screen.frame)),
+            NSMakeRect(cg_pos.x, cg_pos.y, cg_size.width, cg_size.height));
+        offscreen = NSWidth(visible) < MIN_VISIBLE || NSHeight(visible) < MIN_VISIBLE;
     }
 
     if (verbose && offscreen) { NSLog(@"Offscreen window"); }
@@ -652,15 +632,9 @@ inline bool mostly_offscreen(AXUIElementRef _window, CGPoint point) {
 }
 
 inline bool is_desktop_window(AXUIElementRef _window) {
-    bool desktop_window = false;
-    AXValueRef _pos = NULL;
-    AXUIElementCopyAttributeValue(_window, kAXPositionAttribute, (CFTypeRef *) &_pos);
-    if (_pos) {
-        CGPoint cg_pos;
-        desktop_window = AXValueGetValue(_pos, kAXValueTypeCGPoint, &cg_pos) &&
-            NSEqualPoints(NSPointFromCGPoint(cg_pos), NSPointFromCGPoint(desktopOrigin));
-        CFRelease(_pos);
-    }
+    CGPoint cg_pos;
+    bool desktop_window = windowPosition(_window, &cg_pos) &&
+        NSEqualPoints(NSPointFromCGPoint(cg_pos), NSPointFromCGPoint(desktopOrigin));
 
     if (verbose && desktop_window) { NSLog(@"Desktop window"); }
     return desktop_window;
@@ -668,32 +642,19 @@ inline bool is_desktop_window(AXUIElementRef _window) {
 
 inline bool is_full_screen(AXUIElementRef _window) {
     bool full_screen = false;
-    AXValueRef _pos = NULL;
-    AXUIElementCopyAttributeValue(_window, kAXPositionAttribute, (CFTypeRef *) &_pos);
-    if (_pos) {
-        CGPoint cg_pos;
-        if (AXValueGetValue(_pos, kAXValueTypeCGPoint, &cg_pos)) {
-            NSScreen * screen = findScreen(cg_pos);
-            if (screen) {
-                AXValueRef _size = NULL;
-                AXUIElementCopyAttributeValue(_window, kAXSizeAttribute, (CFTypeRef *) &_size);
-                if (_size) {
-                    CGSize cg_size;
-                    if (AXValueGetValue(_size, kAXValueTypeCGSize, &cg_size)) {
-                        float menuBarHeight =
-                            fmax(0, NSMaxY(screen.frame) - NSMaxY(screen.visibleFrame) - 1);
-                        NSScreen * main_screen = NSScreen.screens[0];
-                        float screenOriginY = NSMaxY(main_screen.frame) - NSMaxY(screen.frame);
-                        full_screen = cg_pos.x == NSMinX(screen.frame) &&
-                                      cg_pos.y == screenOriginY + menuBarHeight &&
-                                      cg_size.width == NSWidth(screen.frame) &&
-                                      cg_size.height == NSHeight(screen.frame) - menuBarHeight;
-                    }
-                    CFRelease(_size);
-                }
-            }
+    CGPoint cg_pos;
+    CGSize cg_size;
+    if (windowPosition(_window, &cg_pos)) {
+        NSScreen * screen = findScreen(cg_pos);
+        if (screen && windowSize(_window, &cg_size)) {
+            float menuBarHeight =
+                fmax(0, NSMaxY(screen.frame) - NSMaxY(screen.visibleFrame) - 1);
+            CGPoint origin = screen_origin(screen);
+            full_screen = cg_pos.x == origin.x &&
+                          cg_pos.y == origin.y + menuBarHeight &&
+                          cg_size.width == NSWidth(screen.frame) &&
+                          cg_size.height == NSHeight(screen.frame) - menuBarHeight;
         }
-        CFRelease(_pos);
     }
 
     if (verbose && full_screen) { NSLog(@"Full screen window"); }
@@ -1033,20 +994,19 @@ bool appActivated() {
     }
 
     if (_activatedWindow) {
-        CGPoint warpPoint = get_mousepoint(_activatedWindow);
         bool sameScreen = false;
         if (warpOnlyAcrossScreens) {
             CGEventRef _event = CGEventCreate(NULL);
             CGPoint mousePoint = CGEventGetLocation(_event);
             if (_event) { CFRelease(_event); }
-            sameScreen = findScreen(mousePoint) == findScreen(warpPoint);
+            sameScreen = findScreen(mousePoint) == findScreenByWindow(_activatedWindow);
         }
 
         if (sameScreen) {
             if (verbose) { NSLog(@"Not warping within the same screen"); }
         } else {
             if (verbose) { NSLog(@"Warp mouse"); }
-            CGWarpMouseCursorPosition(warpPoint);
+            CGWarpMouseCursorPosition(get_mousepoint(_activatedWindow));
         }
         if (!finder_app) { CFRelease(_activatedWindow); }
     }
@@ -1096,29 +1056,44 @@ void onTick() {
         // ensures oldCorrectedPoint always has a recent value.
         if (mouseMoved) {
             NSScreen * screen = findScreen(mousePoint);
+            if (verbose) {
+                // a screen keeps its display id across a reconfiguration, its NSScreen
+                // does not necessarily keep its address
+                static CGDirectDisplayID loggedDisplay = kCGNullDirectDisplay;
+                CGDirectDisplayID display = screen ? [screen.deviceDescription[
+                    @"NSScreenNumber"] unsignedIntValue] : kCGNullDirectDisplay;
+                if (display != loggedDisplay) {
+                    loggedDisplay = display;
+                    if (screen) {
+                        CGPoint origin = screen_origin(screen);
+                        NSLog(@"Mouse screen: %@, origin (%.0f, %.0f), mouse (%.1f, %.1f)",
+                            screen.localizedName, origin.x, origin.y, mousePoint.x, mousePoint.y);
+                    } else {
+                        NSLog(@"Mouse screen: none, mouse (%.1f, %.1f)", mousePoint.x, mousePoint.y);
+                    }
+                }
+            }
             mousePoint.x += mouse_x_diff > 0 ? WINDOW_CORRECTION : -WINDOW_CORRECTION;
             mousePoint.y += mouse_y_diff > 0 ? WINDOW_CORRECTION : -WINDOW_CORRECTION;
             if (screen) {
-                NSScreen * main_screen = NSScreen.screens[0];
-                float screenOriginX = NSMinX(screen.frame) - NSMinX(main_screen.frame);
-                float screenOriginY = NSMaxY(main_screen.frame) - NSMaxY(screen.frame);
+                CGPoint origin = screen_origin(screen);
 
-                if (oldPoint.x > screenOriginX + NSWidth(screen.frame) - WINDOW_CORRECTION) {
+                if (oldPoint.x > origin.x + NSWidth(screen.frame) - WINDOW_CORRECTION) {
                     if (verbose) { NSLog(@"Screen edge correction"); }
-                    mousePoint.x = screenOriginX + NSWidth(screen.frame) - SCREEN_EDGE_CORRECTION;
-                } else if (oldPoint.x < screenOriginX + WINDOW_CORRECTION - 1) {
+                    mousePoint.x = origin.x + NSWidth(screen.frame) - SCREEN_EDGE_CORRECTION;
+                } else if (oldPoint.x < origin.x + WINDOW_CORRECTION - 1) {
                     if (verbose) { NSLog(@"Screen edge correction"); }
-                    mousePoint.x = screenOriginX + SCREEN_EDGE_CORRECTION;
+                    mousePoint.x = origin.x + SCREEN_EDGE_CORRECTION;
                 }
 
-                if (oldPoint.y > screenOriginY + NSHeight(screen.frame) - WINDOW_CORRECTION) {
+                if (oldPoint.y > origin.y + NSHeight(screen.frame) - WINDOW_CORRECTION) {
                     if (verbose) { NSLog(@"Screen edge correction"); }
-                    mousePoint.y = screenOriginY + NSHeight(screen.frame) - SCREEN_EDGE_CORRECTION;
+                    mousePoint.y = origin.y + NSHeight(screen.frame) - SCREEN_EDGE_CORRECTION;
                 } else {
                     float menuBarHeight = fmax(0, NSMaxY(screen.frame) - NSMaxY(screen.visibleFrame) - 1);
-                    if (mousePoint.y < screenOriginY + menuBarHeight + MENUBAR_CORRECTION) {
+                    if (mousePoint.y < origin.y + menuBarHeight + MENUBAR_CORRECTION) {
                         if (verbose) { NSLog(@"Menu bar correction"); }
-                        mousePoint.y = screenOriginY;
+                        mousePoint.y = origin.y;
                     }
                 }
             }
@@ -1251,7 +1226,7 @@ void onTick() {
 #endif
                 }
                 CFRelease(_mouseWindowApp);
-                if (needs_raise && mostly_offscreen(_mouseWindow, mousePoint)) {
+                if (needs_raise && is_offscreen_window(_mouseWindow, mousePoint)) {
                     needs_raise = false;
                     if (verbose) { NSLog(@"Excluding offscreen window"); }
                 }
@@ -1275,7 +1250,7 @@ void onTick() {
                         _AXUIElementGetWindow(_focusedWindow, &focusedWindow_id);
                         needs_raise = mouseWindow_id != focusedWindow_id;
                         if (needs_raise && requireScreenChange &&
-                            window_screen(_focusedWindow) == findScreen(mousePoint)) {
+                            findScreenByWindow(_focusedWindow) == findScreen(mousePoint)) {
                             needs_raise = false;
                             if (verbose) { NSLog(@"Excluding same screen"); }
                         }
