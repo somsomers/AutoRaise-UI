@@ -85,6 +85,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var menu: NSMenu = NSMenu()
     var menuItemPrefs : NSMenuItem = NSMenuItem()
     var menuItemQuit : NSMenuItem = NSMenuItem()
+    var menuItemAccessibility : NSMenuItem = NSMenuItem()
     var autoRaiseService: Process = Process()
 
     var autoRaiseDelay : NSInteger = 0
@@ -122,6 +123,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             button.image = icon
         }
 
+        // "Grant Accessibility Permission" menuItem, only shown when it is missing
+        menuItemAccessibility.title = "Grant Accessibility Permission"
+        menuItemAccessibility.action = #selector(requestAccessibility(_:))
+        menu.addItem(menuItemAccessibility)
+
         //"Preferences" menuItem
         menuItemPrefs.title = "Preferences"
         menuItemPrefs.action = #selector(Preferences(_:))
@@ -146,14 +152,33 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    // AutoRaise itself runs as a subprocess of this app and inherits its accessibility
+    // trust, so asking here answers for the engine as well.
+    func updateAccessibilityState() {
+        let trusted = AXIsProcessTrusted()
+        menuItemAccessibility.isHidden = trusted
+        menuBarItem.button?.appearsDisabled = !trusted
+        menuBarItem.button?.toolTip = trusted ? nil :
+            "AutoRaise has no accessibility permission and can not raise or focus anything"
+    }
+
+    @objc func requestAccessibility(_ sender: AnyObject) {
+        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true]
+        _ = AXIsProcessTrustedWithOptions(options as CFDictionary)
+        updateAccessibilityState()
+    }
+
     @objc func menuBarItemClicked(_ sender: NSStatusBarButton) {
+        updateAccessibilityState()
         let event = NSApp.currentEvent!
         if event.type == NSEvent.EventType.rightMouseUp {
             menuBarItem.menu = menu
             menuBarItem.button?.performClick(nil)
             menuBarItem.menu = nil
-        } else {
+        } else if AXIsProcessTrusted() {
             toggleService()
+        } else {
+            requestAccessibility(self)
         }
     }
 
@@ -549,6 +574,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         readPreferences()
         syncLaunchAtLoginButton()
+        updateAccessibilityState()
 
         let shortcut = shortcutView.shortcutValue
         shortcutView.associatedUserDefaultsKey = "HotKey"
@@ -611,6 +637,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             menuBarItem.isVisible = true
             hideIconButton.state = NSControl.StateValue.off
         }
+        updateAccessibilityState()
     }
 
     func stopAutoRaiseMessage() {
